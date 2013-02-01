@@ -14,65 +14,49 @@ and sends the cracked password back to the requesting client
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <string.h>
+#define BUFLEN 512
+#define PORT 9930
+
+void err(char *str)
+{
+    perror(str);
+    exit(1);
+}
+
 
 int 
 main (int argc, char *argv[])
 {
-	//Declaring process variables.
-    int server_sockfd, client_sockfd;
-    int server_len ; 
-    int rc ; 
-    unsigned client_len;
-    struct sockaddr_in server_address;
-    struct sockaddr_in client_address;
- 
-    //Remove any old socket and create an unnamed socket for the server.
-    server_sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    server_address.sin_family = AF_INET;
-    server_address.sin_addr.s_addr = htons(INADDR_ANY);
-    server_address.sin_port = htons(7734) ; 
-    server_len = sizeof(server_address);
- 
-    rc = bind(server_sockfd, (struct sockaddr *) &server_address, server_len);
-    if (rc == -1)
-    {
-    	printf("Bind Error\n");
-    	exit(0);
-    }
-    printf("RC from bind = %d\n", rc ) ; 
-     
-    //Create a connection queue and wait for clients
-    rc = listen(server_sockfd, 5);
+	struct sockaddr_in my_addr, cli_addr;
+    int sockfd, i; 
+    socklen_t slen = sizeof(cli_addr);
+    char buf[BUFLEN];
+
+    if ((sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
+      err("socket");
+    else 
+      printf("Server : Socket() successful\n");
+
+    bzero(&my_addr, sizeof(my_addr));
+    my_addr.sin_family = AF_INET;
+    my_addr.sin_port = htons(PORT);
+    my_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     
-    client_len = sizeof(client_address);
-    client_sockfd = accept(server_sockfd, (struct sockaddr *) &client_address, &client_len);
+    if (bind(sockfd, (struct sockaddr* ) &my_addr, sizeof(my_addr))==-1)
+      err("bind");
+    else
+      printf("Server : bind() successful\n");
 
     while(1)
     {
-        char ch;
-        printf("server waiting\n");
- 
-        //Accept a connection
-        //client_len = sizeof(client_address);
-        //client_sockfd = accept(server_sockfd, (struct sockaddr *) &client_address, &client_len);
-        //printf("after accept()... client_sockfd = %d\n", client_sockfd) ; 
-        //Read write to client on client_sockfd
- 
-        rc = read(client_sockfd, &ch, 1);
-        printf("RC from read = %d\n", rc ) ;        
-        //if (ch=='A') break ; 
-        //ch++;
-        printf("Read from client %c\n", ch++);
-        write(client_sockfd, &ch, 1);
-        break;
+        if (recvfrom(sockfd, buf, BUFLEN, 0, (struct sockaddr*)&cli_addr, &slen)==-1)
+            err("recvfrom()");
+        printf("Received packet from %s:%d\nData: %s\n\n",
+               inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port), buf);
     }
- 
-    printf("server exiting\n");
- 
-    //close(client_sockfd);
-    close(client_sockfd);
-    return 0;	
-	return 0;
-}
 
+    close(sockfd); 
+	return 0;	
+}
  

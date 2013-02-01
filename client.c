@@ -13,54 +13,56 @@ Client side that sends cracking requests to the server
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <string.h>
+
+#define BUFLEN 512
+#define PORT 9930
+
+void err(char *s)
+{
+    perror(s);
+    exit(1);
+}
 
 int 
 main (int argc, char *argv[])
 {
-	 printf("This is the client program\n");
- 
-    int sockfd;
-    int len, rc ;
-    struct sockaddr_in address;
-    int result;
-    char ch = 'A';
- 
-   //Create socket for client.
-    sockfd = socket(PF_INET, SOCK_STREAM, 0);
-    if (sockfd == -1) { 
-        perror("Socket create failed.\n") ; 
-        return -1 ; 
-    } 
-     
-    //Name the socket as agreed with server.
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = inet_addr("127.0.0.1");
-    address.sin_port = htons(7734);
-    len = sizeof(address);
- 
-    result = connect(sockfd, (struct sockaddr *)&address, len);
-    if(result == -1)
+	struct sockaddr_in serv_addr;
+    int sockfd, i, slen=sizeof(serv_addr);
+    char buf[BUFLEN];
+    /*
+    if(argc != 2)
     {
-        perror("Error has occurred");
-        exit(-1);
+      printf("Usage : %s <Server-IP>\n",argv[0]);
+      exit(0);
     }
- 
-    while ( ch < 'B') {
- 
-        //Read and write via sockfd
-        rc = write(sockfd, &ch, 1);
-        printf("write rc = &#37;d\n", rc ) ; 
-        if (rc == -1) break ; 
-         
-        read(sockfd, &ch, 1);
-        printf("Char from server = %c\n", ch);
-        break;
-        //if (ch == 'A') sleep(5) ;  // pause 5 seconds 
-    } 
+	*/
+    if ((sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
+        err("socket");
+
+    bzero(&serv_addr, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(PORT);
+    if (inet_aton("127.0.0.1", &serv_addr.sin_addr)==0)
+    {
+        fprintf(stderr, "inet_aton() failed\n");
+        exit(1);
+    }
+    while(1)
+    {
+        printf("\nEnter data to send(Type exit and press enter to exit) : ");
+        scanf("%[^\n]",buf);
+        getchar();
+        if(strcmp(buf,"exit") == 0)
+          exit(0);
+
+        if (sendto(sockfd, buf, BUFLEN, 0, (struct sockaddr*)&serv_addr, slen)==-1)
+            err("sendto()");
+    }
+
     close(sockfd);
- 
-    exit(0);	
-	return 0;
+    return 0;
+
 }
 
 
