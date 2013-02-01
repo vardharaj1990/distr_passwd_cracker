@@ -23,7 +23,7 @@ void err(char *s)
     perror(s);
     exit(1);
 }
-
+//yo
 int 
 main (int argc, char *argv[])
 {
